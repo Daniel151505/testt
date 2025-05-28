@@ -2,8 +2,16 @@
 
 function findPoint($strArr)
 {
-    // code goes here
-    return $strArr;
+    $arr1 = array_map('trim', explode(',', $strArr[0]));
+    $arr2 = array_map('trim', explode(',', $strArr[1]));
+
+    $common = array_intersect($arr1, $arr2);
+
+    if (empty($common)) {
+        return "false";
+    }
+
+    return implode(',', $common);
 }
 
 // keep this function call here
