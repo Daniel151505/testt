@@ -2,16 +2,87 @@
 
 namespace App;
 
-class GildedRose
-{
+abstract class ItemCategory {
+    protected $item;
+
+    public function __construct(GildedRose $item) {
+        $this->item = $item;
+    }
+
+    abstract public function update();
+
+    protected function increaseQuality($amount = 1) {
+        $this->item->quality = min(50, $this->item->quality + $amount);
+    }
+
+    protected function decreaseQuality($amount = 1) {
+        $this->item->quality = max(0, $this->item->quality - $amount);
+    }
+
+    protected function decreaseSellIn() {
+        $this->item->sellIn -= 1;
+    }
+}
+
+class AgedBrie extends ItemCategory {
+    public function update() {
+        $this->decreaseSellIn();
+
+        $this->increaseQuality();
+
+        if ($this->item->sellIn < 0) {
+            $this->increaseQuality();
+        }
+    }
+}
+
+class BackstagePass extends ItemCategory {
+    public function update() {
+        $this->decreaseSellIn();
+
+        if ($this->item->sellIn < 0) {
+            $this->item->quality = 0;
+            return;
+        }
+
+        if ($this->item->sellIn < 5) {
+            $this->increaseQuality(3);
+        } elseif ($this->item->sellIn < 10) {
+            $this->increaseQuality(2);
+        } else {
+            $this->increaseQuality();
+        }
+    }
+}
+
+class Sulfuras extends ItemCategory {
+    public function update() {}
+}
+
+class Conjured extends ItemCategory {
+    public function update() {
+        $this->decreaseSellIn();
+
+        $degrade = ($this->item->sellIn < 0) ? 4 : 2;
+        $this->decreaseQuality($degrade);
+    }
+}
+
+class NormalItem extends ItemCategory {
+    public function update() {
+        $this->decreaseSellIn();
+
+        $degrade = ($this->item->sellIn < 0) ? 2 : 1;
+        $this->decreaseQuality($degrade);
+    }
+}
+
+class GildedRose {
     public $name;
-
     public $quality;
-
     public $sellIn;
 
-    public function __construct($name, $quality, $sellIn)
-    {
+    public function __construct($name, $quality, $sellIn) {
         $this->name = $name;
         $this->quality = $quality;
         $this->sellIn = $sellIn;
@@ -21,53 +92,28 @@ class GildedRose
         return new static($name, $quality, $sellIn);
     }
 
-    public function tick()
-    {
-        if ($this->name != 'Aged Brie' and $this->name != 'Backstage passes to a TAFKAL80ETC concert') {
-            if ($this->quality > 0) {
-                if ($this->name != 'Sulfuras, Hand of Ragnaros') {
-                    $this->quality = $this->quality - 1;
-                }
-            }
-        } else {
-            if ($this->quality < 50) {
-                $this->quality = $this->quality + 1;
+    public function tick() {
+        $category = $this->getCategory();
+        $category->update();
+    }
 
-                if ($this->name == 'Backstage passes to a TAFKAL80ETC concert') {
-                    if ($this->sellIn < 11) {
-                        if ($this->quality < 50) {
-                            $this->quality = $this->quality + 1;
-                        }
-                    }
-                    if ($this->sellIn < 6) {
-                        if ($this->quality < 50) {
-                            $this->quality = $this->quality + 1;
-                        }
-                    }
-                }
-            }
+    private function getCategory() {
+        if ($this->name == 'Aged Brie') {
+            return new AgedBrie($this);
         }
 
-        if ($this->name != 'Sulfuras, Hand of Ragnaros') {
-            $this->sellIn = $this->sellIn - 1;
+        if ($this->name == 'Backstage passes to a TAFKAL80ETC concert') {
+            return new BackstagePass($this);
         }
 
-        if ($this->sellIn < 0) {
-            if ($this->name != 'Aged Brie') {
-                if ($this->name != 'Backstage passes to a TAFKAL80ETC concert') {
-                    if ($this->quality > 0) {
-                        if ($this->name != 'Sulfuras, Hand of Ragnaros') {
-                            $this->quality = $this->quality - 1;
-                        }
-                    }
-                } else {
-                    $this->quality = $this->quality - $this->quality;
-                }
-            } else {
-                if ($this->quality < 50) {
-                    $this->quality = $this->quality + 1;
-                }
-            }
+        if ($this->name == 'Sulfuras, Hand of Ragnaros') {
+            return new Sulfuras($this);
         }
+
+        if (stripos($this->name, 'Conjured') !== false) {
+            return new Conjured($this);
+        }
+
+        return new NormalItem($this);
     }
 }
